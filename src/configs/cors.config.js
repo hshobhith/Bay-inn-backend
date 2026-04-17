@@ -8,8 +8,8 @@
  */
 
 const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001'
+  process.env.APP_SERVICE_URL,
+  process.env.APP_ADMIN_PANEL_URL,
 ];
 
 const corsOptions = {

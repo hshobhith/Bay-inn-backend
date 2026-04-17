@@ -7,6 +7,9 @@
  *
  */
 
+// load environment variables from .env file — must be first
+require('dotenv').config();
+
 // imports modules & dependencies
 const express = require('express');
 const favicon = require('serve-favicon');
@@ -15,7 +18,6 @@ const cookieParser = require('cookie-parser');
 const appRoot = require('app-root-path');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
-const env = require('dotenv');
 
 // imports application middleware and routes
 const morganLogger = require('../middleware/morgan.logger');
@@ -29,9 +31,6 @@ const appsRoute = require('../routes/apps.routes');
 const roomRoute = require('../routes/room.routes');
 const bookingRoute = require('../routes/booking.route');
 const reviewRoute = require('../routes/review.routes');
-
-// load environment variables from .env file
-env.config();
 
 // initialize express app
 const app = express();
