@@ -61,6 +61,9 @@ const roomsSchema = new mongoose.Schema({
       url: {
         type: String,
         required: [true, 'Room image filed is required']
+      },
+      public_id: {
+        type: String
       }
     }
   ],
