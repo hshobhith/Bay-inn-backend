@@ -1,43 +1,81 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const { Client, RemoteAuth } = require('whatsapp-web.js');
+const { MongoStore } = require('wwebjs-mongo');
+const mongoose = require('mongoose');
+const QRCode = require('qrcode');
+const path = require('path');
+const fs = require('fs');
 
-const NOTIFY_NUMBER = '916366076182'; // country code (91) + number
+const NOTIFY_NUMBER = process.env.NOTIFY_NUMBER; // country code (91) + number
 
-const client = new Client({
-  authStrategy: new LocalAuth({ clientId: 'hotel-booking' }),
-  puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-  },
-  webVersion: '2.3000.1015901307',
-  webVersionCache: {
-    type: 'remote',
-    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1015901307.html'
-  }
-});
-
+let client;
 let isReady = false;
+let pendingQR = null; // base64 data URL served at /api/v1/whatsapp/qr
 
-client.on('qr', (qr) => {
-  console.log('\n========================================');
-  console.log('  WhatsApp QR Code — scan with your phone');
-  console.log('========================================\n');
-  qrcode.generate(qr, { small: true });
-});
+async function initWhatsApp() {
+  // MongoStore needs an open connection — wait if mongoose isn't connected yet
+  if (mongoose.connection.readyState !== 1) {
+    await new Promise((resolve) => mongoose.connection.once('open', resolve));
+  }
 
-client.on('ready', () => {
-  isReady = true;
-  console.log('✅  WhatsApp client is ready — booking notifications enabled');
-});
+  // RemoteAuth writes a temp zip here before syncing to MongoDB — must exist
+  const dataPath = path.resolve(__dirname, '../../.wwebjs_auth');
+  if (!fs.existsSync(dataPath)) {
+    fs.mkdirSync(dataPath, { recursive: true });
+  }
 
-client.on('auth_failure', (msg) => {
-  console.error('WhatsApp auth failed:', msg);
+  const store = new MongoStore({ mongoose });
+
+  client = new Client({
+    authStrategy: new RemoteAuth({
+      clientId: 'hotel-booking',
+      store,
+      backupSyncIntervalMs: 300000, // persist session to MongoDB every 5 min
+      dataPath
+    }),
+    puppeteer: {
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    },
+    webVersion: '2.3000.1015901307',
+    webVersionCache: {
+      type: 'remote',
+      remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1015901307.html'
+    }
+  });
+
+  client.on('qr', async (qr) => {
+    pendingQR = await QRCode.toDataURL(qr);
+    console.log('WhatsApp QR ready — open /api/v1/whatsapp/qr in a browser to scan');
+  });
+
+  client.on('ready', () => {
+    isReady = true;
+    pendingQR = null;
+    console.log('✅  WhatsApp client is ready — booking notifications enabled');
+  });
+
+  client.on('auth_failure', (msg) => {
+    isReady = false;
+    console.error('WhatsApp auth failed:', msg);
+  });
+
+  client.on('disconnected', () => {
+    isReady = false;
+    console.warn('WhatsApp client disconnected — booking notifications paused');
+  });
+
+  client.initialize();
+}
+
+function getWhatsAppStatus() {
+  return { ready: isReady, qr: pendingQR };
+}
+
+async function logoutWhatsApp() {
+  if (!client) throw new Error('WhatsApp client is not initialized');
+  await client.logout(); // disconnects + wipes session from MongoDB store
   isReady = false;
-});
-
-client.on('disconnected', () => {
-  isReady = false;
-  console.warn('WhatsApp client disconnected — booking notifications paused');
-});
+  pendingQR = null;
+}
 
 async function sendBookingNotification(details) {
   if (!isReady) {
@@ -128,8 +166,4 @@ async function sendStatusUpdateNotification(details) {
   }
 }
 
-function initWhatsApp() {
-  client.initialize();
-}
-
-module.exports = { initWhatsApp, sendBookingNotification, sendStatusUpdateNotification };
+module.exports = { initWhatsApp, getWhatsAppStatus, logoutWhatsApp, sendBookingNotification, sendStatusUpdateNotification };

@@ -31,6 +31,7 @@ const appsRoute = require('../routes/apps.routes');
 const roomRoute = require('../routes/room.routes');
 const bookingRoute = require('../routes/booking.route');
 const reviewRoute = require('../routes/review.routes');
+const whatsappRoute = require('../routes/whatsapp.routes');
 
 // initialize express app
 const app = express();
@@ -81,6 +82,7 @@ app.use('/api/v1', appsRoute); // apps routes
 app.use('/api/v1', roomRoute); // room routes
 app.use('/api/v1', bookingRoute); // booking routes
 app.use('/api/v1', reviewRoute); // review routes
+app.use('/api/v1', whatsappRoute); // whatsapp routes
 
 // 404 ~ not found error handler
 app.use(notFoundRoute);
