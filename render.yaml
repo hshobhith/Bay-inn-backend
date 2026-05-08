@@ -3,7 +3,7 @@ services:
     name: hotel-booking-backend
     env: node
     rootDir: .
-    buildCommand: npm install && npx puppeteer browsers install chrome
+    buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV

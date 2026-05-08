@@ -4,24 +4,9 @@ const mongoose = require('mongoose');
 const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
-const { execSync } = require('child_process');
+const chromium = require('@sparticuz/chromium');
 
 const NOTIFY_NUMBER = process.env.NOTIFY_NUMBER; // country code (91) + number
-
-// Finds the Chrome binary installed by `npx puppeteer browsers install chrome`.
-// On Render it lives under /opt/render/.cache/puppeteer; locally falls back to
-// CHROME_PATH env var or lets puppeteer use its own default.
-function getChromePath() {
-  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
-  try {
-    const found = execSync(
-      "find /opt/render/.cache/puppeteer -name 'chrome' -type f 2>/dev/null | head -1",
-      { encoding: 'utf-8' }
-    ).trim();
-    if (found) return found;
-  } catch (_) {}
-  return undefined;
-}
 
 let client;
 let isReady = false;
@@ -40,6 +25,7 @@ async function initWhatsApp() {
   }
 
   const store = new MongoStore({ mongoose });
+  const executablePath = await chromium.executablePath();
 
   client = new Client({
     authStrategy: new RemoteAuth({
@@ -49,7 +35,7 @@ async function initWhatsApp() {
       dataPath
     }),
     puppeteer: {
-      executablePath: getChromePath(),
+      executablePath,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     },
     webVersion: '2.3000.1015901307',
