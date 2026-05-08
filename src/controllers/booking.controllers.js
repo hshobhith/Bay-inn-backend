@@ -12,6 +12,7 @@ const Booking = require('../models/booking.model');
 const { errorResponse, successResponse } = require('../configs/app.response');
 const MyQueryHelper = require('../configs/api.feature');
 const { bookingDatesBeforeCurrentDate } = require('../lib/booking.dates.validator');
+const { sendBookingNotification, sendStatusUpdateNotification } = require('../configs/whatsapp.service');
 
 // TODO: controller for placed booking order
 exports.placedBookingOrder = async (req, res) => {
@@ -66,11 +67,131 @@ exports.placedBookingOrder = async (req, res) => {
     // save room data in database
     const booking = await Booking.create(data);
 
+    // send WhatsApp notification (non-blocking)
+    sendBookingNotification({
+      guestName: req.user.fullName || req.user.userName,
+      guestMobile: req.user.phone || 'N/A',
+      guestAadhar: null,
+      roomName: myRoom.room_name,
+      roomType: myRoom.room_type,
+      roomPrice: myRoom.room_price,
+      bookingDates: booking.booking_dates,
+      bookingId: booking._id.toString()
+    }).catch(() => {});
+
     // success response with register new user
     res.status(201).json(successResponse(
       0,
       'SUCCESS',
       'Your room booking order placed successful. Please wait for confirmation.',
+      booking
+    ));
+  } catch (error) {
+    res.status(500).json(errorResponse(
+      2,
+      'SERVER SIDE ERROR',
+      error
+    ));
+  }
+};
+
+// TODO: controller for placed GUEST booking order (no login required)
+exports.placedGuestBookingOrder = async (req, res) => {
+  try {
+    // validate room id
+    let myRoom = null;
+
+    if (/^[0-9a-fA-F]{24}$/.test(req.params.id)) {
+      myRoom = await Room.findById(req.params.id);
+    } else {
+      return res.status(400).json(errorResponse(
+        1,
+        'FAILED',
+        'Something went wrong. Probably room id missing/incorrect'
+      ));
+    }
+
+    // check room exists
+    if (!myRoom) {
+      return res.status(404).json(errorResponse(
+        4,
+        'UNKNOWN ACCESS',
+        'Room does not exist'
+      ));
+    }
+
+    // check room is available
+    if (myRoom.room_status === 'unavailable') {
+      return res.status(400).json(errorResponse(
+        1,
+        'FAILED',
+        'Sorry! This room is currently unavailable'
+      ));
+    }
+
+    if (myRoom.room_status === 'booked') {
+      return res.status(400).json(errorResponse(
+        1,
+        'FAILED',
+        'Sorry! This room is already booked. Please try again later'
+      ));
+    }
+
+    // validate required guest fields
+    const { guest_name, guest_mobile, guest_aadhar, booking_dates } = req.body;
+
+    if (!guest_name || guest_name.trim() === '') {
+      return res.status(400).json(errorResponse(
+        1,
+        'FAILED',
+        '`guest_name` is required'
+      ));
+    }
+
+    if (!guest_mobile || guest_mobile.trim() === '') {
+      return res.status(400).json(errorResponse(
+        1,
+        'FAILED',
+        '`guest_mobile` is required'
+      ));
+    }
+
+    if (!/^[0-9]{10}$/.test(guest_mobile.trim())) {
+      return res.status(400).json(errorResponse(
+        1,
+        'FAILED',
+        '`guest_mobile` must be a valid 10-digit mobile number'
+      ));
+    }
+
+    // prepare data
+    const data = {
+      room_id: req.params.id,
+      booking_dates,
+      guest_name: guest_name.trim(),
+      guest_mobile: guest_mobile.trim(),
+      guest_aadhar: guest_aadhar ? guest_aadhar.trim() : undefined
+    };
+
+    // save booking
+    const booking = await Booking.create(data);
+
+    // send WhatsApp notification (non-blocking)
+    sendBookingNotification({
+      guestName: data.guest_name,
+      guestMobile: data.guest_mobile,
+      guestAadhar: data.guest_aadhar || null,
+      roomName: myRoom.room_name,
+      roomType: myRoom.room_type,
+      roomPrice: myRoom.room_price,
+      bookingDates: booking.booking_dates,
+      bookingId: booking._id.toString()
+    }).catch(() => {});
+
+    res.status(201).json(successResponse(
+      0,
+      'SUCCESS',
+      'Your room booking has been placed successfully. Please wait for confirmation.',
       booking
     ));
   } catch (error) {
@@ -260,6 +381,19 @@ exports.cancelSelfBookingOrder = async (req, res) => {
 // TODO: controller for get all booking order by admin
 exports.getBookingOrderForAdmin = async (req, res) => {
   try {
+    // auto-transition approved bookings whose every date has passed → in-reviews, room → available
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiredApproved = await Booking.find({ booking_status: 'approved' });
+    for (const b of expiredApproved) {
+      const allPast = b.booking_dates.every((d) => new Date(d) < today);
+      if (allPast) {
+        b.booking_status = 'in-reviews';
+        await b.save({ validateBeforeSave: false });
+        await Room.findByIdAndUpdate(b.room_id, { room_status: 'available' });
+      }
+    }
+
     const myBooking = await Booking.find()
       .populate('room_id')
       .populate('booking_by')
@@ -317,7 +451,7 @@ exports.getBookingOrderForAdmin = async (req, res) => {
         created_at: data?.reviews?.createdAt,
         updated_at: data?.reviews?.updatedAt
       },
-      booking_by: {
+      booking_by: data?.booking_by ? {
         id: data?.booking_by?._id,
         userName: data?.booking_by?.userName,
         fullName: data?.booking_by?.fullName,
@@ -332,7 +466,10 @@ exports.getBookingOrderForAdmin = async (req, res) => {
         status: data?.booking_by?.status,
         createdAt: data?.booking_by?.createdAt,
         updatedAt: data?.booking_by?.updatedAt
-      },
+      } : null,
+      guest_name: data?.guest_name || null,
+      guest_mobile: data?.guest_mobile || null,
+      guest_aadhar: data?.guest_aadhar || null,
       room: {
         id: data?.room_id?._id,
         room_name: data?.room_id?.room_name,
@@ -385,7 +522,7 @@ exports.updatedBookingOrderByAdmin = async (req, res) => {
 
     if (/^[0-9a-fA-F]{24}$/.test(req.params.id)) {
       // find the booking by id and check if the booking_by user id matches the authenticated user id
-      booking = await Booking.findOne({ _id: req.params.id });
+      booking = await Booking.findOne({ _id: req.params.id }).populate('booking_by');
     } else {
       return res.status(400).json(errorResponse(
         1,
@@ -437,74 +574,84 @@ exports.updatedBookingOrderByAdmin = async (req, res) => {
     // handle update booking status
     switch (req.body.booking_status) {
       case 'approved':
-        if (booking.booking_status === 'pending') {
-          if (!bookingDatesBeforeCurrentDate(booking?.booking_dates).isAnyDateInPast) {
-            // update the booking status to `approved`
-            booking.booking_status = 'approved';
-            await booking.save({ validateBeforeSave: false });
-
-            // update the room status to 'booked'
-            myRoom.room_status = 'booked';
-            await myRoom.save({ validateBeforeSave: false });
-          } else {
-            return res.status(400).json(errorResponse(
-              1,
-              'FAILED',
-              'Sorry! This booking cannot be `approved` because of booking data is past'
-            ));
+        if (booking.booking_status !== 'pending') {
+          return res.status(400).json(errorResponse(1, 'FAILED', 'Only pending bookings can be approved'));
+        }
+        booking.booking_status = 'approved';
+        await booking.save({ validateBeforeSave: false });
+        myRoom.room_status = 'booked';
+        await myRoom.save({ validateBeforeSave: false });
+        // auto-reject all other pending bookings for this room on overlapping dates
+        {
+          const conflicting = await Booking.find({
+            _id: { $ne: booking._id },
+            room_id: booking.room_id,
+            booking_status: 'pending',
+            booking_dates: { $in: booking.booking_dates }
+          }).populate('booking_by', 'phone');
+          if (conflicting.length > 0) {
+            await Booking.updateMany(
+              { _id: { $in: conflicting.map((b) => b._id) } },
+              { booking_status: 'rejected' }
+            );
+            conflicting.forEach((cb) => {
+              const mobile = cb.guest_mobile || cb.booking_by?.phone;
+              if (mobile) {
+                sendStatusUpdateNotification({
+                  guestMobile: mobile,
+                  roomName: myRoom.room_name,
+                  roomType: myRoom.room_type,
+                  bookingDates: cb.booking_dates,
+                  bookingId: cb._id.toString(),
+                  newStatus: 'rejected'
+                }).catch(() => {});
+              }
+            });
           }
-        } else {
-          return res.status(400).json(errorResponse(
-            1,
-            'FAILED',
-            'This booking cannot be `approved` as it is no longer in the `pending` status'
-          ));
         }
         break;
+
       case 'rejected':
-        if (booking.booking_status === 'pending') {
-          // update the booking status to `rejected`
-          booking.booking_status = 'rejected';
-          await booking.save({ validateBeforeSave: false });
-        } else {
-          return res.status(400).json(errorResponse(
-            1,
-            'FAILED',
-            'This booking cannot be `rejected` as it is no longer in the `pending` status'
-          ));
+        if (!['pending', 'approved'].includes(booking.booking_status)) {
+          return res.status(400).json(errorResponse(1, 'FAILED', 'Only pending or approved bookings can be rejected'));
         }
-        break;
-      case 'in-reviews':
         if (booking.booking_status === 'approved') {
-          if (bookingDatesBeforeCurrentDate(booking?.booking_dates).isAnyDateInPast) {
-            // update the booking status to `in-reviews`
-            booking.booking_status = 'in-reviews';
-            await booking.save({ validateBeforeSave: false });
-
-            // update the room status to 'available'
-            myRoom.room_status = 'available';
-            await myRoom.save({ validateBeforeSave: false });
-          } else {
-            return res.status(400).json(errorResponse(
-              1,
-              'FAILED',
-              'Sorry! This booking cannot be `in-reviews` because of booking data is not feature'
-            ));
-          }
-        } else {
-          return res.status(400).json(errorResponse(
-            1,
-            'FAILED',
-            'This booking cannot be `in-reviews` as it is no longer in the `approved` status'
-          ));
+          myRoom.room_status = 'available';
+          await myRoom.save({ validateBeforeSave: false });
         }
+        booking.booking_status = 'rejected';
+        await booking.save({ validateBeforeSave: false });
         break;
+
+      case 'in-reviews':
+        if (booking.booking_status !== 'approved') {
+          return res.status(400).json(errorResponse(1, 'FAILED', 'Only approved bookings can be moved to in-reviews'));
+        }
+        booking.booking_status = 'in-reviews';
+        await booking.save({ validateBeforeSave: false });
+        myRoom.room_status = 'available';
+        await myRoom.save({ validateBeforeSave: false });
+        break;
+
       default:
         return res.status(400).json(errorResponse(
           1,
           'FAILED',
           `Your provided booking_status '${booking.booking_status}' can't match our system. Please try again using a correct booking_status`
         ));
+    }
+
+    // resolve guest mobile: guest booking uses guest_mobile, auth booking uses user phone
+    const guestMobile = booking.guest_mobile || booking.booking_by?.phone;
+    if (guestMobile) {
+      sendStatusUpdateNotification({
+        guestMobile,
+        roomName: myRoom.room_name,
+        roomType: myRoom.room_type,
+        bookingDates: booking.booking_dates,
+        bookingId: booking._id.toString(),
+        newStatus: booking.booking_status
+      }).catch(() => {});
     }
 
     // success response after canceling the booking

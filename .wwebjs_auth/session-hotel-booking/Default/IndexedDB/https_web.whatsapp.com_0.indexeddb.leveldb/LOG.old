@@ -1,0 +1,18 @@
+2026/05/07-22:55:00.004 abaad Reusing MANIFEST /home/skills-229/Downloads/React-HotelBooking-SYSTEM-Project-main/backend/.wwebjs_auth/session-hotel-booking/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/05/07-22:55:00.006 abaad Recovering log #1489
+2026/05/07-22:55:00.012 abaad Reusing old log /home/skills-229/Downloads/React-HotelBooking-SYSTEM-Project-main/backend/.wwebjs_auth/session-hotel-booking/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001489.log 
+2026/05/07-22:55:01.573 abaad Compacting 1@1 + 5@2 files
+2026/05/07-22:55:01.680 abaad Generated table #1501@1: 88201 keys, 2238348 bytes
+2026/05/07-22:55:01.720 abaad Generated table #1502@1: 28858 keys, 2196500 bytes
+2026/05/07-22:55:01.768 abaad Generated table #1503@1: 70677 keys, 2235851 bytes
+2026/05/07-22:55:01.810 abaad Generated table #1504@1: 50352 keys, 2219482 bytes
+2026/05/07-22:55:01.829 abaad Generated table #1505@1: 15520 keys, 2162289 bytes
+2026/05/07-22:55:01.832 abaad Generated table #1506@1: 68 keys, 127859 bytes
+2026/05/07-22:55:01.832 abaad Compacted 1@1 + 5@2 files => 11180329 bytes
+2026/05/07-22:55:01.833 abaad compacted to: files[ 0 0 18 0 0 0 0 ]
+2026/05/07-22:55:01.834 abaad Delete type=2 #1479
+2026/05/07-22:55:01.834 abaad Delete type=2 #1491
+2026/05/07-22:55:01.834 abaad Delete type=2 #1478
+2026/05/07-22:55:01.834 abaad Delete type=2 #1481
+2026/05/07-22:55:01.834 abaad Delete type=2 #1480
+2026/05/07-22:55:01.834 abaad Delete type=2 #1482

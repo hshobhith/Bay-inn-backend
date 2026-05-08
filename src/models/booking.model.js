@@ -29,8 +29,20 @@ const bookingSchema = new mongoose.Schema({
   },
   booking_by: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Users',
-    required: [true, 'User id is required field']
+    ref: 'Users'
+  },
+  // Guest booking details (used when booking without login)
+  guest_name: {
+    type: String,
+    trim: true
+  },
+  guest_mobile: {
+    type: String,
+    trim: true
+  },
+  guest_aadhar: {
+    type: String,
+    trim: true
   },
   reviews: {
     type: mongoose.Schema.Types.ObjectId,
