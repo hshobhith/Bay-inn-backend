@@ -12,7 +12,7 @@ const Booking = require('../models/booking.model');
 const { errorResponse, successResponse } = require('../configs/app.response');
 const MyQueryHelper = require('../configs/api.feature');
 const { bookingDatesBeforeCurrentDate } = require('../lib/booking.dates.validator');
-const { sendBookingNotification, sendStatusUpdateNotification } = require('../configs/whatsapp.service');
+// const { sendBookingNotification, sendStatusUpdateNotification } = require('../configs/whatsapp.service');
 
 // TODO: controller for placed booking order
 exports.placedBookingOrder = async (req, res) => {
@@ -68,16 +68,16 @@ exports.placedBookingOrder = async (req, res) => {
     const booking = await Booking.create(data);
 
     // send WhatsApp notification (non-blocking)
-    sendBookingNotification({
-      guestName: req.user.fullName || req.user.userName,
-      guestMobile: req.user.phone || 'N/A',
-      guestAadhar: null,
-      roomName: myRoom.room_name,
-      roomType: myRoom.room_type,
-      roomPrice: myRoom.room_price,
-      bookingDates: booking.booking_dates,
-      bookingId: booking._id.toString()
-    }).catch(() => {});
+    // sendBookingNotification({
+    //   guestName: req.user.fullName || req.user.userName,
+    //   guestMobile: req.user.phone || 'N/A',
+    //   guestAadhar: null,
+    //   roomName: myRoom.room_name,
+    //   roomType: myRoom.room_type,
+    //   roomPrice: myRoom.room_price,
+    //   bookingDates: booking.booking_dates,
+    //   bookingId: booking._id.toString()
+    // }).catch(() => {});
 
     // success response with register new user
     res.status(201).json(successResponse(
@@ -177,16 +177,16 @@ exports.placedGuestBookingOrder = async (req, res) => {
     const booking = await Booking.create(data);
 
     // send WhatsApp notification (non-blocking)
-    sendBookingNotification({
-      guestName: data.guest_name,
-      guestMobile: data.guest_mobile,
-      guestAadhar: data.guest_aadhar || null,
-      roomName: myRoom.room_name,
-      roomType: myRoom.room_type,
-      roomPrice: myRoom.room_price,
-      bookingDates: booking.booking_dates,
-      bookingId: booking._id.toString()
-    }).catch(() => {});
+    // sendBookingNotification({
+    //   guestName: data.guest_name,
+    //   guestMobile: data.guest_mobile,
+    //   guestAadhar: data.guest_aadhar || null,
+    //   roomName: myRoom.room_name,
+    //   roomType: myRoom.room_type,
+    //   roomPrice: myRoom.room_price,
+    //   bookingDates: booking.booking_dates,
+    //   bookingId: booking._id.toString()
+    // }).catch(() => {});
 
     res.status(201).json(successResponse(
       0,
@@ -597,14 +597,14 @@ exports.updatedBookingOrderByAdmin = async (req, res) => {
             conflicting.forEach((cb) => {
               const mobile = cb.guest_mobile || cb.booking_by?.phone;
               if (mobile) {
-                sendStatusUpdateNotification({
-                  guestMobile: mobile,
-                  roomName: myRoom.room_name,
-                  roomType: myRoom.room_type,
-                  bookingDates: cb.booking_dates,
-                  bookingId: cb._id.toString(),
-                  newStatus: 'rejected'
-                }).catch(() => {});
+                // sendStatusUpdateNotification({
+                //   guestMobile: mobile,
+                //   roomName: myRoom.room_name,
+                //   roomType: myRoom.room_type,
+                //   bookingDates: cb.booking_dates,
+                //   bookingId: cb._id.toString(),
+                //   newStatus: 'rejected'
+                // }).catch(() => {});
               }
             });
           }
@@ -644,14 +644,14 @@ exports.updatedBookingOrderByAdmin = async (req, res) => {
     // resolve guest mobile: guest booking uses guest_mobile, auth booking uses user phone
     const guestMobile = booking.guest_mobile || booking.booking_by?.phone;
     if (guestMobile) {
-      sendStatusUpdateNotification({
-        guestMobile,
-        roomName: myRoom.room_name,
-        roomType: myRoom.room_type,
-        bookingDates: booking.booking_dates,
-        bookingId: booking._id.toString(),
-        newStatus: booking.booking_status
-      }).catch(() => {});
+      // sendStatusUpdateNotification({
+      //   guestMobile,
+      //   roomName: myRoom.room_name,
+      //   roomType: myRoom.room_type,
+      //   bookingDates: booking.booking_dates,
+      //   bookingId: booking._id.toString(),
+      //   newStatus: booking.booking_status
+      // }).catch(() => {});
     }
 
     // success response after canceling the booking
