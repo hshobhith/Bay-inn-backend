@@ -36,6 +36,9 @@ const whatsappRoute = require('../routes/whatsapp.routes');
 // initialize express app
 const app = express();
 
+// trust Render's reverse proxy so express-rate-limit reads the real client IP
+app.set('trust proxy', 1);
+
 // limiting middleware to all requests
 app.use(limiter);
 

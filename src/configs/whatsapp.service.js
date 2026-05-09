@@ -37,11 +37,6 @@ async function initWhatsApp() {
     puppeteer: {
       executablePath,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    },
-    webVersion: '2.3000.1015901307',
-    webVersionCache: {
-      type: 'remote',
-      remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1015901307.html'
     }
   });
 
