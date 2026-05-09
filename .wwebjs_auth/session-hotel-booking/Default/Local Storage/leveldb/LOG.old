@@ -1,6 +1,0 @@
-2026/05/08-20:59:53.437 556b Reusing MANIFEST /home/skills-229/Downloads/React-HotelBooking-SYSTEM-Project-main/backend/.wwebjs_auth/session-hotel-booking/Default/Local Storage/leveldb/MANIFEST-000001
-2026/05/08-20:59:53.443 556b Recovering log #7
-2026/05/08-20:59:53.444 556b Reusing old log /home/skills-229/Downloads/React-HotelBooking-SYSTEM-Project-main/backend/.wwebjs_auth/session-hotel-booking/Default/Local Storage/leveldb/000007.log 
-2026/05/08-21:14:33.128 556e Level-0 table #11: started
-2026/05/08-21:14:33.138 556e Level-0 table #11: 14139 bytes OK
-2026/05/08-21:14:33.142 556e Delete type=0 #7

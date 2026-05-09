@@ -19,13 +19,7 @@
 // imports modules & dependencies
 const app = require('./src/app');
 const logger = require('./src/middleware/winston.logger');
-const { initWhatsApp } = require('./src/configs/whatsapp.service');
-
 // app listens to .env defined port
 app.listen(process.env.APP_PORT, () => {
   logger.info(`App server running on: ${process.env.APP_BASE_URL}`);
-  // delay WhatsApp init by 10s so Render's health check passes first
-  setTimeout(() => {
-    initWhatsApp().catch((err) => logger.error('WhatsApp init failed:', err.message));
-  }, 10000);
 });
